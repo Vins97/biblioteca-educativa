@@ -22,16 +22,10 @@
         .send-btn, .file-btn { background: #1a5f7a; border: none; color: white; padding: 10px 15px; border-radius: 4px; cursor: pointer; }
         .file-btn { background: #444; }
     </style>
-
-    <!-- MOTOR DE FIREBASE INCRUSTADO (Inmune a bloqueos de red perimetrales) -->
-    <script>
-        // Servidor espejo local simulado mediante inyección dinámica
-        (function(){var e=document.createElement("script");e.src="https://unpkg.com";e.onerror=function(){console.log("Espejo 1 falló, activando motor autónomo de respaldo...");var s=document.createElement("script");s.src="https://jsdelivr.net";document.head.appendChild(s);var d=document.createElement("script");d.src="https://jsdelivr.net";document.head.appendChild(d)};document.head.appendChild(e);var t=document.createElement("script");t.src="https://unpkg.com";document.head.appendChild(t)})();
-    </script>
 </head>
 <body>
 
-    <!-- DISFRAZ -->
+    <!-- PORTADA DISFRAZ -->
     <div id="school-page">
         <header>
             <h1>Plataforma de Apoyo Académico v2.4</h1>
@@ -47,7 +41,7 @@
     <!-- INTERFAZ DEL CHAT -->
     <div id="secret-chat">
         <div class="chat-header">
-            <h3>Canal Anónimo de Comunicaciones</h3>
+            <h3>Canal Anónimo de Comunicaciones (Bypass API)</h3>
             <button class="close-btn" onclick="cerrarChat()">X</button>
         </div>
         <div id="messages"></div>
@@ -60,67 +54,90 @@
     </div>
 
     <script>
-        // CONFIGURACIÓN DE TU PROYECTO DE GOOGLE
-        const firebaseConfig = {
-  apiKey: "AIzaSyAImYmTMMmSD0EaV7IoO33mXDcB4OF0q38",
-  databaseURL: "https://proyecto-escolar-base-default-rtdb.firebaseio.com",
-  projectId: "proyecto-escolar-base",
-        };
+        // ⚠️ PEGA AQUÍ TU DATABASE URL DE FIREBASE TERMINADA EN /mensajes.json
+        // Ejemplo: "https://firebaseio.com"
+        const DB_URL = "https://proyecto-escolar-base-default-rtdb.firebaseio.com/mensajes.json";
         
-        var database;
         const miUsuario = "Anonimo" + Math.floor(Math.random() * 1000);
+        let ultimoId = null;
 
-        function abrirChat() { document.getElementById('secret-chat').style.display = 'block'; }
+        function abrirChat() { 
+            document.getElementById('secret-chat').style.display = 'block'; 
+            cargarMensajes();
+            // Revisar si hay nuevos mensajes cada 3 segundos (Simula tiempo real sin levantar alertas)
+            setInterval(cargarMensajes, 3000);
+        }
         function cerrarChat() { document.getElementById('secret-chat').style.display = 'none'; }
 
-        // Bucle de verificación de carga asíncrona
-        var checkFirebase = setInterval(function() {
-            if (typeof firebase !== 'undefined' && firebase.initializeApp) {
-                clearInterval(checkFirebase);
-                try {
-                    firebase.initializeApp(firebaseConfig);
-                    database = firebase.database();
-                    console.log("¡Conexión bypass establecida con éxito!");
+        // Cargar mensajes mediante consulta HTTP nativa (Imbloqueable)
+        function cargarMensajes() {
+            fetch(DB_URL)
+            .then(res => res.json())
+            .then(data => {
+                if(!data) return;
+                const contenedor = document.getElementById('messages');
+                contenedor.innerHTML = ""; // Limpiamos para redibujar actualizado
+                
+                Object.keys(data).forEach(key => {
+                    const msgData = data[key];
+                    const msgDiv = document.createElement('div');
+                    msgDiv.className = 'msg';
                     
-                    database.ref('mensajes').on('child_added', (snapshot) => {
-                        const data = snapshot.val();
-                        const msgDiv = document.createElement('div');
-                        msgDiv.className = 'msg';
-                        if(data.tipo === 'texto') {
-                            msgDiv.innerText = data.usuario + ": " + data.texto;
-                        } else if(data.tipo === 'imagen') {
-                            msgDiv.innerHTML = `<strong>${data.usuario}:</strong><br><img src="${data.url}">`;
-                        }
-                        document.getElementById('messages').appendChild(msgDiv);
-                        document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
-                    });
-                } catch (e) { console.error("Error inicializando database:", e); }
-            }
-        }, 500);
+                    if(msgData.tipo === 'texto') {
+                        msgDiv.innerText = msgData.usuario + ": " + msgData.texto;
+                    } else if(msgData.tipo === 'imagen') {
+                        msgDiv.innerHTML = `<strong>${msgData.usuario}:</strong><br><img src="${msgData.url}">`;
+                    }
+                    contenedor.appendChild(msgDiv);
+                });
+                contenedor.scrollTop = contenedor.scrollHeight;
+            })
+            .catch(err => console.error("Error al leer datos:", err));
+        }
 
+        // Enviar mensajes usando POST nativo
         function enviarMensaje() {
             const input = document.getElementById('msg-input');
-            if(!input || input.value.trim() === "" || !database) return;
-            database.ref('mensajes').push({
+            if(!input || input.value.trim() === "") return;
+
+            const payload = {
                 usuario: miUsuario,
                 texto: input.value,
                 tipo: 'texto',
                 timestamp: Date.now()
-            });
-            input.value = "";
+            };
+
+            fetch(DB_URL, {
+                method: "POST", //
+                body: JSON.stringify(payload) //
+            })
+            .then(() => {
+                input.value = "";
+                cargarMensajes(); // Actualiza al instante
+            })
+            .catch(err => alert("Error al enviar tráfico: " + err));
         }
 
+        // Procesar multimedia sin librerías
         function subirImagen(element) {
             const file = element.files[0];
-            if (!file || !database) return;
+            if (!file) return;
+            
             const reader = new FileReader();
             reader.onloadend = function() {
-                database.ref('mensajes').push({
+                const payload = {
                     usuario: miUsuario,
                     url: reader.result,
                     tipo: 'imagen',
                     timestamp: Date.now()
-                });
+                };
+
+                fetch(DB_URL, {
+                    method: "POST",
+                    body: JSON.stringify(payload)
+                })
+                .then(() => cargarMensajes())
+                .catch(err => alert("Error multimedia: " + err));
             }
             reader.readAsDataURL(file);
         }
