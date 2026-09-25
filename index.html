@@ -72,12 +72,26 @@
   projectId: "proyecto-escolar-base",
         };
         
-        // Inicializar Firebase si las credenciales están puestas
-        if(firebaseConfig.apiKey !== "REEMPLAZAR_CON_TU_API_KEY") {
+        // 2. Declaramos la base de datos de forma global para que todos los botones la vean
+        var database;
+
+        // Inicializar Firebase automáticamente
+        try {
             firebase.initializeApp(firebaseConfig);
-            var database = firebase.database();
-            
-            // Escuchar mensajes nuevos en tiempo real
+            database = firebase.database();
+            console.log("Firebase conectado correctamente.");
+        } catch (error) {
+            console.error("Error al conectar con Firebase:", error);
+        }
+
+        // Generar un nombre de usuario anónimo aleatorio por sesión (Ej: Anonimo834)
+        const miUsuario = "Anonimo" + Math.floor(Math.random() * 1000);
+
+        function abrirChat() { document.getElementById('secret-chat').style.display = 'block'; }
+        function cerrarChat() { document.getElementById('secret-chat').style.display = 'none'; }
+
+        // Escuchar mensajes nuevos en tiempo real
+        if (database) {
             database.ref('mensajes').on('child_added', (snapshot) => {
                 const data = snapshot.val();
                 const msgDiv = document.createElement('div');
@@ -92,15 +106,10 @@
             });
         }
 
-        // Generar un nombre de usuario anónimo aleatorio por sesión (Ej: Anonimo834)
-        const miUsuario = "Anonimo" + Math.floor(Math.random() * 1000);
-
-        function abrirChat() { document.getElementById('secret-chat').style.display = 'block'; }
-        function cerrarChat() { document.getElementById('secret-chat').style.display = 'none'; }
-
         function enviarMensaje() {
             const input = document.getElementById('msg-input');
-            if(input.value.trim() === "" || !database) return;
+            if(input.value.trim() === "") return;
+            
             database.ref('mensajes').push({
                 usuario: miUsuario,
                 texto: input.value,
@@ -112,8 +121,9 @@
 
         // Convertir imagen a Base64 para enviarla como texto plano (Súper rápido y no requiere almacenamiento extra)
         function subirImagen(input) {
-            const file = input.files[0];
-            if (!file || !database) return;
+            const file = input.files[0]; // Corregido: tomamos el primer archivo seleccionado
+            if (!file) return;
+            
             const reader = new FileReader();
             reader.onloadend = function() {
                 database.ref('mensajes').push({
@@ -126,5 +136,3 @@
             reader.readAsDataURL(file);
         }
     </script>
-</body>
-</html>
