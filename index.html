@@ -41,7 +41,6 @@
                 <li><strong>Módulo 1:</strong> Metodología de la Investigación Científica</li>
                 <li><strong>Módulo 2:</strong> Introducción al Análisis Estadístico Aplicado</li>
             </ul>
-            <!-- ELIMINADO EL ONCLICK MANUAL PARA EVITAR ERRORES DE ORDEN -->
             <div id="trigger-id" class="hidden-trigger">Copyright © 2026 - Departamento de Soporte Técnico Educativo Integrado.</div>
         </div>
     </div>
@@ -97,10 +96,10 @@
             catch(e) { return "[Mensaje Ilegible]"; }
         }
 
-        // CONTROL DE CARGA PROTEGIDO: Solo se ejecuta cuando TODO el HTML está listo
-        window.onload = function() {
+        // Activación inmediata en el instante en que el diseño está listo
+        document.addEventListener("DOMContentLoaded", function() {
+            console.log("Sistema listo y enlazando componentes...");
             
-            // Asignar los eventos directamente desde código (Adiós errores de undefined)
             document.getElementById('trigger-id').onclick = abrirChat;
             document.getElementById('btn-close').onclick = cerrarChat;
             document.getElementById('btn-delete').onclick = borrarTodoElHistorial;
