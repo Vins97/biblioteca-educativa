@@ -41,7 +41,7 @@
     <!-- INTERFAZ DEL CHAT -->
     <div id="secret-chat">
         <div class="chat-header">
-            <h3>Canal Anónimo de Comunicaciones (Bypass API)</h3>
+            <h3>Canal Anónimo (<span id="user-display"></span>)</h3>
             <button class="close-btn" onclick="cerrarChat()">X</button>
         </div>
         <div id="messages"></div>
@@ -54,31 +54,51 @@
     </div>
 
     <script>
-        // ⚠️ PEGA AQUÍ TU DATABASE URL DE FIREBASE TERMINADA EN /mensajes.json
-        // Ejemplo: "https://firebaseio.com"
+        // ⚠️ PEGA TU URL DE FIREBASE AQUÍ RECUERDA EL /mensajes.json AL FINAL
         const DB_URL = "https://proyecto-escolar-base-default-rtdb.firebaseio.com/mensajes.json";
         
-        const miUsuario = "Anonimo" + Math.floor(Math.random() * 1000);
-        let ultimoId = null;
+        let miUsuario = "";
+        let esPrimeraCarga = true;
+        let ID_UltimoMensaje = "";
+        let bucleChat = null;
 
-        function abrirChat() { 
+        function abrirChat() {
+            // Solicitar apodo personalizado si no existe
+            if (!miUsuario) {
+                let apodo = prompt("Introduce tu apodo para esta sesión:", "Anónimo");
+                miUsuario = apodo ? apodo.trim() : "Anónimo";
+                document.getElementById('user-display').innerText = miUsuario;
+            }
+
+            // Solicitar permisos de notificación (Especialmente para Android)
+            if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+                Notification.requestPermission();
+            }
+
             document.getElementById('secret-chat').style.display = 'block'; 
             cargarMensajes();
-            // Revisar si hay nuevos mensajes cada 3 segundos (Simula tiempo real sin levantar alertas)
-            setInterval(cargarMensajes, 3000);
+            
+            if(!bucleChat) {
+                bucleChat = setInterval(cargarMensajes, 3000);
+            }
         }
-        function cerrarChat() { document.getElementById('secret-chat').style.display = 'none'; }
 
-        // Cargar mensajes mediante consulta HTTP nativa (Imbloqueable)
+        function cerrarChat() { 
+            document.getElementById('secret-chat').style.display = 'none'; 
+        }
+
         function cargarMensajes() {
             fetch(DB_URL)
             .then(res => res.json())
             .then(data => {
                 if(!data) return;
                 const contenedor = document.getElementById('messages');
-                contenedor.innerHTML = ""; // Limpiamos para redibujar actualizado
+                contenedor.innerHTML = ""; 
                 
-                Object.keys(data).forEach(key => {
+                let llaves = Object.keys(data);
+                let ultimaLlaveDetectada = llaves[llaves.length - 1];
+
+                llaves.forEach(key => {
                     const msgData = data[key];
                     const msgDiv = document.createElement('div');
                     msgDiv.className = 'msg';
@@ -90,12 +110,38 @@
                     }
                     contenedor.appendChild(msgDiv);
                 });
+
+                // Lógica de Notificaciones Dinámicas
+                if (!esPrimeraCarga && ID_UltimoMensaje !== ultimaLlaveDetectada) {
+                    const ultimoMsg = data[ultimaLlaveDetectada];
+                    // Solo notifica si el mensaje es de la OTRA persona
+                    if (ultimoMsg.usuario !== miUsuario) {
+                        ejecutarNotificacion(ultimoMsg);
+                    }
+                }
+
+                ID_UltimoMensaje = ultimaLlaveDetectada;
+                esPrimeraCarga = false;
                 contenedor.scrollTop = contenedor.scrollHeight;
             })
             .catch(err => console.error("Error al leer datos:", err));
         }
 
-        // Enviar mensajes usando POST nativo
+        function ejecutarNotificacion(msg) {
+            if (Notification.permission === "granted") {
+                let cuerpo = msg.tipo === 'texto' ? msg.texto : "📷 Ha enviado una imagen";
+                new Notification(`Mensaje de ${msg.usuario}`, {
+                    body: cuerpo,
+                    icon: "https://github.com" // Icono genérico discreto
+                });
+                
+                // Vibración en dispositivos Android compatibles
+                if (navigator.vibrate) {
+                    navigator.vibrate([200, 100, 200]);
+                }
+            }
+        }
+
         function enviarMensaje() {
             const input = document.getElementById('msg-input');
             if(!input || input.value.trim() === "") return;
@@ -108,17 +154,16 @@
             };
 
             fetch(DB_URL, {
-                method: "POST", //
-                body: JSON.stringify(payload) //
+                method: "POST",
+                body: JSON.stringify(payload)
             })
             .then(() => {
                 input.value = "";
-                cargarMensajes(); // Actualiza al instante
+                cargarMensajes();
             })
-            .catch(err => alert("Error al enviar tráfico: " + err));
+            .catch(err => console.error(err));
         }
 
-        // Procesar multimedia sin librerías
         function subirImagen(element) {
             const file = element.files[0];
             if (!file) return;
@@ -137,7 +182,7 @@
                     body: JSON.stringify(payload)
                 })
                 .then(() => cargarMensajes())
-                .catch(err => alert("Error multimedia: " + err));
+                .catch(err => console.error(err));
             }
             reader.readAsDataURL(file);
         }
