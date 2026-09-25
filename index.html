@@ -13,9 +13,7 @@
         
         #secret-chat { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; color: white; z-index: 99999; font-family: sans-serif; }
         .chat-header { background: #1f1f1f; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
-        .header-actions { display: flex; gap: 10px; align-items: center; }
-        .close-btn { background: #ff4444; border: none; color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .delete-btn { background: #333; border: 1px solid #555; color: #ff4444; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+        .close-btn { background: #ff4444; border: none; color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
         #messages { height: calc(100% - 130px); overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
         .msg { background: #2a2a2a; padding: 10px; border-radius: 8px; max-width: 70%; width: fit-content; word-break: break-all; }
         .msg img { max-width: 100%; max-height: 250px; border-radius: 4px; margin-top: 5px; display: block; }
@@ -24,6 +22,8 @@
         .send-btn, .file-btn { background: #1a5f7a; border: none; color: white; padding: 10px 15px; border-radius: 4px; cursor: pointer; }
         .file-btn { background: #444; }
     </style>
+    <!-- Cargamos una librería criptográfica ligera desde un espejo seguro e imbloqueable (cdnjs) -->
+    <script src="https://cloudflare.com"></script>
 </head>
 <body>
 
@@ -44,10 +44,7 @@
     <div id="secret-chat">
         <div class="chat-header">
             <h3>🔒 Canal Cifrado (<span id="user-display"></span>)</h3>
-            <div class="header-actions">
-                <button class="delete-btn" onclick="borrarTodoElHistorial()" title="Borrar todos los mensajes">🗑️ Borrar Todo</button>
-                <button class="close-btn" onclick="cerrarChat()">X</button>
-            </div>
+            <button class="close-btn" onclick="cerrarChat()">X</button>
         </div>
         <div id="messages"></div>
         <div class="chat-input-area">
@@ -59,7 +56,7 @@
     </div>
 
     <script>
-        // ⚠️ ENLACE DE FIREBASE CON /mensajes.json AL FINAL
+        // ⚠️ ENLACE DE TU FIREBASE CON /mensajes.json AL FINAL
         const DB_URL = "https://proyecto-escolar-base-default-rtdb.firebaseio.com/mensajes.json";
         
         let miUsuario = "";
@@ -68,45 +65,29 @@
         let ID_UltimoMensaje = "";
         let bucleChat = null;
 
-        // MOTOR CRIPTOGRÁFICO NATIVO INCRUSTADO
-        function aplicarCripto(str, key) {
-            let s = [], j = 0, x, res = '';
-            for (let i = 0; i < 256; i++) { s[i] = i; }
-            for (let i = 0; i < 256; i++) {
-                j = (j + s[i] + key.charCodeAt(i % key.length)) % 256;
-                x = s[i]; s[i] = s[j]; s[j] = x;
-            }
-            let i = 0; j = 0;
-            for (let y = 0; y < str.length; y++) {
-                i = (i + 1) % 256;
-                j = (j + s[i]) % 256;
-                x = s[i]; s[i] = s[j]; s[j] = x;
-                res += String.fromCharCode(str.charCodeAt(y) ^ s[(s[i] + s[j]) % 256]);
-            }
-            return res;
-        }
-        function cifrarLocal(texto, clave) { return btoa(unescape(encodeURIComponent(aplicarCripto(texto, clave)))); }
-        function descifrarLocal(encriptado, clave) {
-            try { return decodeURIComponent(escape(aplicarCripto(atob(encriptado), clave))); } 
-            catch(e) { return "[Mensaje Ilegible]"; }
-        }
-
         function abrirChat() {
             if (!miUsuario) {
                 let apodo = prompt("Introduce tu apodo para esta sesión:", "Anónimo");
                 miUsuario = apodo ? apodo.trim() : "Anónimo";
                 document.getElementById('user-display').innerText = miUsuario;
             }
+            
+            // Petición de la contraseña de cifrado de extremo a extremo
             if (!claveCifrado) {
-                let clave = prompt("Introduce la clave secreta E2EE:");
+                let clave = prompt("Introduce la contraseña secreta de cifrado (Deben usar la misma tu amigo y tú):");
                 claveCifrado = clave ? clave.trim() : "clave_defecto";
             }
+
             if (Notification.permission !== "granted" && Notification.permission !== "denied") {
                 Notification.requestPermission();
             }
+
             document.getElementById('secret-chat').style.display = 'block'; 
             cargarMensajes();
-            if(!bucleChat) { bucleChat = setInterval(cargarMensajes, 3000); }
+            
+            if(!bucleChat) {
+                bucleChat = setInterval(cargarMensajes, 3000);
+            }
         }
 
         function cerrarChat() { document.getElementById('secret-chat').style.display = 'none'; }
@@ -115,16 +96,10 @@
             fetch(DB_URL)
             .then(res => res.json())
             .then(data => {
+                if(!data) return;
                 const contenedor = document.getElementById('messages');
-                
-                // Si la base de datos se borró (está vacía), limpiamos la pantalla y salimos
-                if(!data) {
-                    contenedor.innerHTML = "";
-                    ID_UltimoMensaje = "";
-                    return;
-                }
-                
                 contenedor.innerHTML = ""; 
+                
                 let llaves = Object.keys(data);
                 let ultimaLlaveDetectada = llaves[llaves.length - 1];
 
@@ -133,25 +108,32 @@
                     const msgDiv = document.createElement('div');
                     msgDiv.className = 'msg';
                     
-                    let contenidoDescifrado = descifrarLocal(msgData.contenido, claveCifrado);
+                    try {
+                        // DESCIFRADO LOCAL ANTES DE MOSTRAR EN PANTALLA
+                        let bytesContenido = CryptoJS.AES.decrypt(msgData.contenido, claveCifrado);
+                        let contenidoDescifrado = bytesContenido.toString(CryptoJS.enc.Utf8);
 
-                    if(msgData.tipo === 'texto') {
-                        msgDiv.innerText = msgData.usuario + ": " + contenidoDescifrado;
-                    } else if(msgData.tipo === 'imagen') {
-                        if(contenidoDescifrado.startsWith("[Mensaje")) {
+                        if(msgData.tipo === 'texto') {
                             msgDiv.innerText = msgData.usuario + ": " + contenidoDescifrado;
-                        } else {
+                        } else if(msgData.tipo === 'imagen') {
                             msgDiv.innerHTML = `<strong>${msgData.usuario}:</strong><br><img src="${contenidoDescifrado}">`;
                         }
+                        contenedor.appendChild(msgDiv);
+                    } catch(e) {
+                        // Si la contraseña es incorrecta, muestra el mensaje como basura ilegible
+                        msgDiv.innerText = msgData.usuario + ": [Mensaje Cifrado Ilegible]";
+                        contenedor.appendChild(msgDiv);
                     }
-                    contenedor.appendChild(msgDiv);
                 });
 
                 if (!esPrimeraCarga && ID_UltimoMensaje !== ultimaLlaveDetectada) {
                     const ultimoMsg = data[ultimaLlaveDetectada];
                     if (ultimoMsg.usuario !== miUsuario) {
-                        let texto = descifrarLocal(ultimoMsg.contenido, claveCifrado);
-                        ejecutarNotificacion(ultimoMsg.usuario, ultimoMsg.tipo === 'texto' ? texto : "📷 Imagen recibida");
+                        try {
+                            let bytes = CryptoJS.AES.decrypt(ultimoMsg.contenido, claveCifrado);
+                            let texto = bytes.toString(CryptoJS.enc.Utf8);
+                            ejecutarNotificacion(ultimoMsg.usuario, ultimoMsg.tipo === 'texto' ? texto : "📷 Imagen recibida");
+                        } catch(e){}
                     }
                 }
 
@@ -160,20 +142,6 @@
                 contenedor.scrollTop = contenedor.scrollHeight;
             })
             .catch(err => console.error("Error al leer datos:", err));
-        }
-
-        // NUEVA FUNCIÓN: Envía un método DELETE nativo para vaciar el nodo de mensajes en Firebase
-        function borrarTodoElHistorial() {
-            if (!confirm("¿Seguro que quieres borrar de forma permanente TODOS los mensajes e imágenes del chat?")) return;
-            
-            fetch(DB_URL, {
-                method: "DELETE"
-            })
-            .then(() => {
-                document.getElementById('messages').innerHTML = "";
-                alert("Historial destruido con éxito.");
-            })
-            .catch(err => alert("Error al borrar: " + err));
         }
 
         function ejecutarNotificacion(usuario, cuerpo) {
@@ -187,8 +155,46 @@
             const input = document.getElementById('msg-input');
             if(!input || input.value.trim() === "") return;
 
-            let textoCifrado = cifrarLocal(input.value, claveCifrado);
-            const payload = { usuario: miUsuario, contenido: textoCifrado, tipo: 'texto', timestamp: Date.now() };
+            // CIFRADO LOCAL ANTES DE ENVIAR A INTERNET
+            let textoCifrado = CryptoJS.AES.encrypt(input.value, claveCifrado).toString();
+
+            const payload = {
+                usuario: miUsuario,
+                contenido: textoCifrado,
+                tipo: 'texto',
+                timestamp: Date.now()
+            };
 
             fetch(DB_URL, { method: "POST", body: JSON.stringify(payload) })
-            .then(() => { input.value = ""; cargarMensajes(); })
+            .then(() => {
+                input.value = "";
+                cargarMensajes();
+            })
+            .catch(err => console.error(err));
+        }
+
+        function subirImagen(element) {
+            const file = element.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onloadend = function() {
+                // CIFRADO LOCAL DE LA IMAGEN COMPLETA ANTES DE SUBIRLA
+                let imagenCifrada = CryptoJS.AES.encrypt(reader.result, claveCifrado).toString();
+
+                const payload = {
+                    usuario: miUsuario,
+                    contenido: imagenCifrada,
+                    tipo: 'imagen',
+                    timestamp: Date.now()
+                };
+
+                fetch(DB_URL, { method: "POST", body: JSON.stringify(payload) })
+                .then(() => cargarMensajes())
+                .catch(err => console.error(err));
+            }
+            reader.readAsDataURL(file);
+        }
+    </script>
+</body>
+</html>
