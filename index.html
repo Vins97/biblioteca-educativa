@@ -5,16 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portal Educativo - Material de Lectura e Investigación</title>
     <style>
-        /* Estilos para que parezca una página escolar legítima */
-        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; bg-color: #f4f6f9; color: #333; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f6f9; color: #333; }
         header { background-color: #1a5f7a; color: white; padding: 20px; text-align: center; }
         .container { max-width: 800px; margin: 30px auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         h2 { color: #1a5f7a; }
+        /* El truco: Parece texto de copyright normal, pero si le das clic te saca del sitio discretamente */
         .hidden-trigger { color: #888; font-size: 11px; cursor: pointer; margin-top: 50px; text-align: right; user-select: none; }
-        
-        /* Contenedor del Chat Oculto */
-        #chat-container { display: none; width: 100%; height: 85vh; border: none; position: fixed; top: 0; left: 0; z-index: 9999; background: white; }
-        #close-btn { display: none; position: fixed; top: 10px; right: 10px; z-index: 10000; background: #ff4444; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -35,22 +31,14 @@
             <li><strong>Módulo 3:</strong> Redacción de Textos y Ensayos Académicos</li>
         </ul>
         
-        <!-- EL BOTÓN SECRETO: Parece texto aburrido, pero abre el chat multimedia anónimo -->
-        <div class="hidden-trigger" onclick="abrirChat()">Copyright © 2026 - Departamento de Soporte Técnico Educativo Integrado.</div>
+        <!-- Al hacer clic aquí, te lleva directo al chat de Element -->
+        <div class="hidden-trigger" onclick="irAlChat()">Copyright © 2026 - Departamento de Soporte Técnico Educativo Integrado.</div>
     </div>
 
-    <!-- Pantalla completa del chat (Element Web) -->
-    <button id="close-btn" onclick="cerrarChat()">CERRAR PORTAL</button>
-    <iframe id="chat-container" src="https://element.io"></iframe>
-
     <script>
-        function abrirChat() {
-            document.getElementById('chat-container').style.display = 'block';
-            document.getElementById('close-btn').style.display = 'block';
-        }
-        function cerrarChat() {
-            document.getElementById('chat-container').style.display = 'none';
-            document.getElementById('close-btn').style.display = 'none';
+        function irAlChat() {
+            // Te redirige a la app oficial sin levantar sospechas en el historial inmediato
+            window.location.href = "https://app.element.io/";
         }
     </script>
 </body>
