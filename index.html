@@ -27,7 +27,7 @@
 </head>
 <body>
 
-    <!-- PORTADA DISFRAZ (LO QUE VE EL FIREWALL) -->
+    <!-- PORTADA DISFRAZ -->
     <div id="school-page">
         <header>
             <h1>Plataforma de Apoyo Académico v2.4</h1>
@@ -41,8 +41,8 @@
                 <li><strong>Módulo 1:</strong> Metodología de la Investigación Científica</li>
                 <li><strong>Módulo 2:</strong> Introducción al Análisis Estadístico Aplicado</li>
             </ul>
-            <!-- GATILLO OCULTO PARA ABRIR EL CHAT -->
-            <div class="hidden-trigger" onclick="abrirChat()">Copyright © 2026 - Departamento de Soporte Técnico Educativo Integrado.</div>
+            <!-- ELIMINADO EL ONCLICK MANUAL PARA EVITAR ERRORES DE ORDEN -->
+            <div id="trigger-id" class="hidden-trigger">Copyright © 2026 - Departamento de Soporte Técnico Educativo Integrado.</div>
         </div>
     </div>
 
@@ -51,20 +51,19 @@
         <div class="chat-header">
             <h3>🔒 Canal Cifrado (<span id="user-display"></span>)</h3>
             <div class="header-actions">
-                <button class="delete-btn" onclick="borrarTodoElHistorial()" title="Borrar todos los mensajes">🗑️ Borrar Todo</button>
-                <button class="close-btn" onclick="cerrarChat()">X</button>
+                <button class="delete-btn" id="btn-delete" title="Borrar todos los mensajes">🗑️ Borrar Todo</button>
+                <button class="close-btn" id="btn-close">X</button>
             </div>
         </div>
         <div id="messages"></div>
         <div class="chat-input-area">
-            <input type="text" id="msg-input" placeholder="Escribe un mensaje cifrado..." onkeypress="if(event.key === 'Enter') enviarMensaje()">
-            <button class="file-btn" onclick="document.getElementById('file-input').click()">📷</button>
-            <input type="file" id="file-input" accept="image/*" style="display:none;" onchange="subirImagen(this)">
-            <button class="send-btn" onclick="enviarMensaje()">Enviar</button>
+            <input type="text" id="msg-input" placeholder="Escribe un mensaje cifrado...">
+            <button class="file-btn" id="btn-file-trigger">📷</button>
+            <input type="file" id="file-input" accept="image/*" style="display:none;">
+            <button class="send-btn" id="btn-send">Enviar</button>
         </div>
     </div>
 
-    <!-- EL SCRIPT AHORA ESTÁ AL FINAL (Resuelve el error de Cannot set properties of null) -->
     <script>
         // ⚠️ ENLACE DE TU BASE DE DATOS DE FIREBASE TERMINADO EN /mensajes.json
         const DB_URL = "https://proyecto-escolar-base-default-rtdb.firebaseio.com/mensajes.json";
@@ -92,109 +91,90 @@
             }
             return res;
         }
-        
-        function cifrarLocal(texto, clave) { 
-            return btoa(unescape(encodeURIComponent(aplicarCripto(texto, clave)))); 
-        }
-        
+        function cifrarLocal(texto, clave) { return btoa(unescape(encodeURIComponent(aplicarCripto(texto, clave)))); }
         function descifrarLocal(encriptado, clave) {
-            try { 
-                return decodeURIComponent(escape(aplicarCripto(atob(encriptado), clave))); 
-            } catch(e) { 
-                return "[Mensaje Ilegible]"; 
-            }
+            try { return decodeURIComponent(escape(aplicarCripto(atob(encriptado), clave))); } 
+            catch(e) { return "[Mensaje Ilegible]"; }
         }
 
-        function abrirChat() {
-            if (!miUsuario) {
-                let apodo = prompt("Introduce tu apodo para esta sesión:", "Anónimo");
-                miUsuario = apodo ? apodo.trim() : "Anónimo";
-                document.getElementById('user-display').innerText = miUsuario;
-            }
-            if (!claveCifrado) {
-                let clave = prompt("Introduce la clave secreta E2EE (Debe ser la misma para ambos):");
-                claveCifrado = clave ? clave.trim() : "clave_defecto";
-            }
-            if (Notification.permission !== "granted" && Notification.permission !== "denied") {
-                Notification.requestPermission();
-            }
-            document.getElementById('secret-chat').style.display = 'block'; 
-            cargarMensajes();
-            if(!bucleChat) { 
-                bucleChat = setInterval(cargarMensajes, 3000); 
-            }
-        }
+        // CONTROL DE CARGA PROTEGIDO: Solo se ejecuta cuando TODO el HTML está listo
+        window.onload = function() {
+            
+            // Asignar los eventos directamente desde código (Adiós errores de undefined)
+            document.getElementById('trigger-id').onclick = abrirChat;
+            document.getElementById('btn-close').onclick = cerrarChat;
+            document.getElementById('btn-delete').onclick = borrarTodoElHistorial;
+            document.getElementById('btn-send').onclick = enviarMensaje;
+            document.getElementById('btn-file-trigger').onclick = function() { document.getElementById('file-input').click(); };
+            document.getElementById('file-input').onchange = function() { subirImagen(this); };
+            document.getElementById('msg-input').onkeypress = function(e) { if(e.key === 'Enter') enviarMensaje(); };
 
-        function cerrarChat() { 
-            document.getElementById('secret-chat').style.display = 'none'; 
-        }
-
-        function cargarMensajes() {
-            fetch(DB_URL)
-            .then(res => res.json())
-            .then(data => {
-                const contenedor = document.getElementById('messages');
-                
-                if(!data) {
-                    contenedor.innerHTML = "";
-                    ID_UltimoMensaje = "";
-                    return;
+            function abrirChat() {
+                if (!miUsuario) {
+                    let apodo = prompt("Introduce tu apodo para esta sesión:", "Anónimo");
+                    miUsuario = apodo ? apodo.trim() : "Anónimo";
+                    document.getElementById('user-display').innerText = miUsuario;
                 }
-                
-                contenedor.innerHTML = ""; 
-                let llaves = Object.keys(data);
-                let ultimaLlaveDetectada = llaves[llaves.length - 1];
+                if (!claveCifrado) {
+                    let clave = prompt("Introduce la clave secreta E2EE (Debe ser la misma para ambos):");
+                    claveCifrado = clave ? clave.trim() : "clave_defecto";
+                }
+                if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+                    Notification.requestPermission();
+                }
+                document.getElementById('secret-chat').style.display = 'block'; 
+                cargarMensajes();
+                if(!bucleChat) { bucleChat = setInterval(cargarMensajes, 3000); }
+            }
 
-                llaves.forEach(key => {
-                    const msgData = data[key];
-                    const msgDiv = document.createElement('div');
-                    msgDiv.className = 'msg';
+            function cerrarChat() { 
+                document.getElementById('secret-chat').style.display = 'none'; 
+            }
+
+            function cargarMensajes() {
+                fetch(DB_URL)
+                .then(res => res.json())
+                .then(data => {
+                    const contenedor = document.getElementById('messages');
+                    if(!data) { contenedor.innerHTML = ""; ID_UltimoMensaje = ""; return; }
                     
-                    let contenidoDescifrado = descifrarLocal(msgData.contenido, claveCifrado);
+                    contenedor.innerHTML = ""; 
+                    let llaves = Object.keys(data);
+                    let ultimaLlaveDetectada = llaves[llaves.length - 1];
 
-                    if(msgData.tipo === 'texto') {
-                        msgDiv.innerText = msgData.usuario + ": " + contenidoDescifrado;
-                    } else if(msgData.tipo === 'imagen') {
-                        if(contenidoDescifrado.startsWith("[Mensaje")) {
+                    llaves.forEach(key => {
+                        const msgData = data[key];
+                        const msgDiv = document.createElement('div');
+                        msgDiv.className = 'msg';
+                        
+                        let contenidoDescifrado = descifrarLocal(msgData.contenido, claveCifrado);
+
+                        if(msgData.tipo === 'texto') {
                             msgDiv.innerText = msgData.usuario + ": " + contenidoDescifrado;
-                        } else {
-                            msgDiv.innerHTML = `<strong>${msgData.usuario}:</strong><br><img src="${contenidoDescifrado}">`;
+                        } else if(msgData.tipo === 'imagen') {
+                            if(contenidoDescifrado.startsWith("[Mensaje")) {
+                                msgDiv.innerText = msgData.usuario + ": " + contenidoDescifrado;
+                            } else {
+                                msgDiv.innerHTML = `<strong>${msgData.usuario}:</strong><br><img src="${contenidoDescifrado}">`;
+                            }
+                        }
+                        contenedor.appendChild(msgDiv);
+                    });
+
+                    if (!esPrimeraCarga && ID_UltimoMensaje !== ultimaLlaveDetectada) {
+                        const ultimoMsg = data[ultimaLlaveDetectada];
+                        if (ultimoMsg.usuario !== miUsuario) {
+                            let texto = descifrarLocal(ultimoMsg.contenido, claveCifrado);
+                            ejecutarNotificacion(ultimoMsg.usuario, ultimoMsg.tipo === 'texto' ? texto : "📷 Imagen recibida");
                         }
                     }
-                    contenedor.appendChild(msgDiv);
-                });
-
-                if (!esPrimeraCarga && ID_UltimoMensaje !== ultimaLlaveDetectada) {
-                    const ultimoMsg = data[ultimaLlaveDetectada];
-                    if (ultimoMsg.usuario !== miUsuario) {
-                        let texto = descifrarLocal(ultimoMsg.contenido, claveCifrado);
-                        ejecutarNotificacion(ultimoMsg.usuario, ultimoMsg.tipo === 'texto' ? texto : "📷 Imagen recibida");
-                    }
-                }
-
-                ID_UltimoMensaje = ultimaLlaveDetectada;
-                esPrimeraCarga = false;
-                contenedor.scrollTop = contenedor.scrollHeight;
-            })
-            .catch(err => console.error("Error al leer datos:", err));
-        }
-
-        function borrarTodoElHistorial() {
-            if (!confirm("¿Seguro que quieres borrar de forma permanente TODOS los mensajes e imágenes del chat?")) return;
-            
-            fetch(DB_URL, { method: "DELETE" })
-            .then(() => {
-                document.getElementById('messages').innerHTML = "";
-                alert("Historial destruido con éxito.");
-            })
-            .catch(err => alert("Error al borrar: " + err));
-        }
-
-        function ejecutarNotificacion(usuario, cuerpo) {
-            if (Notification.permission === "granted") {
-                new Notification(`Mensaje de ${usuario}`, { body: cuerpo, icon: "https://github.com" });
-                if (navigator.vibrate) navigator.vibrate();
+                    ID_UltimoMensaje = ultimaLlaveDetectada;
+                    esPrimeraCarga = false;
+                    contenedor.scrollTop = contenedor.scrollHeight;
+                })
+                .catch(err => console.error("Error al leer datos:", err));
             }
-        }
 
-        function enviarMensaje() {
+            function borrarTodoElHistorial() {
+                if (!confirm("¿Seguro que quieres borrar de forma permanente TODOS los mensajes?")) return;
+                fetch(DB_URL, { method: "DELETE" })
