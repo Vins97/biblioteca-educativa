@@ -27,7 +27,7 @@
 </head>
 <body>
 
-    <!-- PORTADA DISFRAZ -->
+    <!-- PORTADA DISFRAZ (LO QUE VE EL FIREWALL) -->
     <div id="school-page">
         <header>
             <h1>Plataforma de Apoyo Académico v2.4</h1>
@@ -36,14 +36,20 @@
         <div class="container">
             <h2>📚 Guía de Uso del Portal</h2>
             <p>Este espacio contiene la bibliografía obligatoria para el trimestre en curso.</p>
+            <h3>Módulos Disponibles:</h3>
+            <ul>
+                <li><strong>Módulo 1:</strong> Metodología de la Investigación Científica</li>
+                <li><strong>Módulo 2:</strong> Introducción al Análisis Estadístico Aplicado</li>
+            </ul>
+            <!-- GATILLO OCULTO PARA ABRIR EL CHAT -->
             <div class="hidden-trigger" onclick="abrirChat()">Copyright © 2026 - Departamento de Soporte Técnico Educativo Integrado.</div>
         </div>
     </div>
 
-    <!-- INTERFAZ DEL CHAT -->
+    <!-- INTERFAZ DEL CHAT SECRETO -->
     <div id="secret-chat">
         <div class="chat-header">
-            <h3>🔒 Canal Cifrado (<span id="user-display"></span>)</h3>
+            <h3>🔒 Canal Cifrado Local (<span id="user-display"></span>)</h3>
             <div class="header-actions">
                 <button class="delete-btn" onclick="borrarTodoElHistorial()" title="Borrar todos los mensajes">🗑️ Borrar Todo</button>
                 <button class="close-btn" onclick="cerrarChat()">X</button>
@@ -59,7 +65,7 @@
     </div>
 
     <script>
-        // ⚠️ ENLACE DE FIREBASE CON /mensajes.json AL FINAL
+        // ⚠️ ENLACE DE TU BASE DE DATOS DE FIREBASE TERMINADO EN /mensajes.json
         const DB_URL = "https://proyecto-escolar-base-default-rtdb.firebaseio.com/mensajes.json";
         
         let miUsuario = "";
@@ -68,7 +74,7 @@
         let ID_UltimoMensaje = "";
         let bucleChat = null;
 
-        // MOTOR CRIPTOGRÁFICO NATIVO INCRUSTADO
+        // MOTOR CRIPTOGRÁFICO NATIVO INCRUSTADO (Algoritmo RC4 simétrico plano)
         function aplicarCripto(str, key) {
             let s = [], j = 0, x, res = '';
             for (let i = 0; i < 256; i++) { s[i] = i; }
@@ -85,10 +91,17 @@
             }
             return res;
         }
-        function cifrarLocal(texto, clave) { return btoa(unescape(encodeURIComponent(aplicarCripto(texto, clave)))); }
+        
+        function cifrarLocal(texto, clave) { 
+            return btoa(unescape(encodeURIComponent(aplicarCripto(texto, clave)))); 
+        }
+        
         function descifrarLocal(encriptado, clave) {
-            try { return decodeURIComponent(escape(aplicarCripto(atob(encriptado), clave))); } 
-            catch(e) { return "[Mensaje Ilegible]"; }
+            try { 
+                return decodeURIComponent(escape(aplicarCripto(atob(encriptado), clave))); 
+            } catch(e) { 
+                return "[Mensaje Ilegible]"; 
+            }
         }
 
         function abrirChat() {
@@ -98,7 +111,7 @@
                 document.getElementById('user-display').innerText = miUsuario;
             }
             if (!claveCifrado) {
-                let clave = prompt("Introduce la clave secreta E2EE:");
+                let clave = prompt("Introduce la clave secreta E2EE (Debe ser la misma para ambos):");
                 claveCifrado = clave ? clave.trim() : "clave_defecto";
             }
             if (Notification.permission !== "granted" && Notification.permission !== "denied") {
@@ -106,10 +119,14 @@
             }
             document.getElementById('secret-chat').style.display = 'block'; 
             cargarMensajes();
-            if(!bucleChat) { bucleChat = setInterval(cargarMensajes, 3000); }
+            if(!bucleChat) { 
+                bucleChat = setInterval(cargarMensajes, 3000); 
+            }
         }
 
-        function cerrarChat() { document.getElementById('secret-chat').style.display = 'none'; }
+        function cerrarChat() { 
+            document.getElementById('secret-chat').style.display = 'none'; 
+        }
 
         function cargarMensajes() {
             fetch(DB_URL)
@@ -117,7 +134,6 @@
             .then(data => {
                 const contenedor = document.getElementById('messages');
                 
-                // Si la base de datos se borró (está vacía), limpiamos la pantalla y salimos
                 if(!data) {
                     contenedor.innerHTML = "";
                     ID_UltimoMensaje = "";
@@ -147,6 +163,7 @@
                     contenedor.appendChild(msgDiv);
                 });
 
+                // Lógica de notificaciones en tiempo real
                 if (!esPrimeraCarga && ID_UltimoMensaje !== ultimaLlaveDetectada) {
                     const ultimoMsg = data[ultimaLlaveDetectada];
                     if (ultimoMsg.usuario !== miUsuario) {
@@ -162,13 +179,10 @@
             .catch(err => console.error("Error al leer datos:", err));
         }
 
-        // NUEVA FUNCIÓN: Envía un método DELETE nativo para vaciar el nodo de mensajes en Firebase
         function borrarTodoElHistorial() {
             if (!confirm("¿Seguro que quieres borrar de forma permanente TODOS los mensajes e imágenes del chat?")) return;
             
-            fetch(DB_URL, {
-                method: "DELETE"
-            })
+            fetch(DB_URL, { method: "DELETE" })
             .then(() => {
                 document.getElementById('messages').innerHTML = "";
                 alert("Historial destruido con éxito.");
@@ -184,11 +198,3 @@
         }
 
         function enviarMensaje() {
-            const input = document.getElementById('msg-input');
-            if(!input || input.value.trim() === "") return;
-
-            let textoCifrado = cifrarLocal(input.value, claveCifrado);
-            const payload = { usuario: miUsuario, contenido: textoCifrado, tipo: 'texto', timestamp: Date.now() };
-
-            fetch(DB_URL, { method: "POST", body: JSON.stringify(payload) })
-            .then(() => { input.value = ""; cargarMensajes(); })
