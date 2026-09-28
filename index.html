@@ -41,7 +41,6 @@
                 <li><strong>Módulo 1:</strong> Metodología de la Investigación Científica</li>
                 <li><strong>Módulo 2:</strong> Introducción al Análisis Estadístico Aplicado</li>
             </ul>
-            <!-- SIN ATRIBUTOS ONCLICK EN EL HTML -->
             <div id="trigger-id" class="hidden-trigger">Copyright © 2026 - Departamento de Soporte Técnico Educativo Integrado.</div>
         </div>
     </div>
@@ -51,7 +50,6 @@
         <div class="chat-header">
             <h3>🔒 Canal Cifrado (<span id="user-display"></span>)</h3>
             <div class="header-actions">
-                <!-- SIN ATRIBUTOS ONCLICK EN EL HTML -->
                 <button class="delete-btn" id="btn-delete">🗑️ Borrar Todo</button>
                 <button class="close-btn" id="btn-close">X</button>
             </div>
@@ -65,6 +63,7 @@
         </div>
     </div>
 
+    <!-- EL JAVASCRIPT AHORA ESTÁ AL FINAL (Garantiza que el HTML ya exista en memoria) -->
     <script>
         // ⚠️ ENLACE DE TU BASE DE DATOS DE FIREBASE TERMINADO EN /mensajes.json
         const DB_URL = "https://proyecto-escolar-base-default-rtdb.firebaseio.com/mensajes.json";
@@ -178,7 +177,7 @@
 
         function enviarMensaje() {
             const input = document.getElementById('msg-input');
-            if(!input || input.value.trim() === "" || !claveCifrado) return;
+            if(!input || input.value.trim() === "") return;
 
             let textoCifrado = cifrarLocal(input.value, claveCifrado);
             const payload = { usuario: miUsuario, contenido: textoCifrado, tipo: 'texto', timestamp: Date.now() };
