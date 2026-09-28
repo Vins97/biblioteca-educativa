@@ -10,7 +10,6 @@
         .container { max-width: 800px; margin: 30px auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         h2 { color: #1a5f7a; }
         .hidden-trigger { color: #888; font-size: 11px; cursor: pointer; margin-top: 50px; text-align: right; user-select: none; }
-        
         #secret-chat { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; color: white; z-index: 99999; font-family: sans-serif; }
         .chat-header { background: #1f1f1f; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
         .header-actions { display: flex; gap: 10px; align-items: center; }
@@ -27,7 +26,6 @@
 </head>
 <body>
 
-    <!-- PORTADA DISFRAZ -->
     <div id="school-page">
         <header>
             <h1>Plataforma de Apoyo Académico v2.4</h1>
@@ -45,7 +43,6 @@
         </div>
     </div>
 
-    <!-- INTERFAZ DEL CHAT SECRETO -->
     <div id="secret-chat">
         <div class="chat-header">
             <h3>🔒 Canal Cifrado (<span id="user-display"></span>)</h3>
@@ -56,17 +53,15 @@
         </div>
         <div id="messages"></div>
         <div class="chat-input-area">
-            <input type="text" id="msg-input" placeholder="Escribe un mensaje cifrado...">
+           https://proyecto-escolar-base-default-rtdb.firebaseio.com/mensajes.json
             <button class="file-btn" id="btn-file-trigger">📷</button>
             <input type="file" id="file-input" accept="image/*" style="display:none;">
             <button class="send-btn" id="btn-send">Enviar</button>
         </div>
     </div>
 
-    <!-- SCRIPT PROTEGIDO -->
     <script>
-        // ⚠️ PEGA TU ENLACE DE FIREBASE REAL CON /mensajes.json AL FINAL
-        const DB_URL = "https://proyecto-escolar-base-default-rtdb.firebaseio.com/mensajes.json";
+        const DB_URL = "TU_DATABASE_URL_REAL/mensajes.json";
         
         let miUsuario = ""; let claveCifrado = ""; let esPrimeraCarga = true; let ID_UltimoMensaje = ""; let bucleChat = null;
 
@@ -131,14 +126,13 @@
         }
 
         function enviarMensaje() {
-            const input = document.getElementById('msg-input'); if(!input || input.value.trim() === "" || !claveCifrado) return;
+            const input = document.getElementById('msg-input'); if(!input || input.value.trim() === "") return;
             let textoCifrado = cifrarLocal(input.value, claveCifrado);
             const payload = { usuario: miUsuario, contenido: textoCifrado, tipo: 'texto', timestamp: Date.now() };
             fetch(DB_URL, { method: "POST", body: JSON.stringify(payload) }).then(() => { input.value = ""; cargarMensajes(); }).catch(err => console.error(err));
         }
 
-        // COMPACTADO EN UNA SOLA LÍNEA DE SEGURIDAD (Inmune a los recortes del editor)
-        function subirImagen(element) { const file = element.files[0]; if (!file || !claveCifrado) return; const reader = new FileReader(); reader.onloadend = function() { const payload = { usuario: miUsuario, contenido: cifrarLocal(reader.result, claveCifrado), tipo: 'imagen', timestamp: Date.now() }; fetch(DB_URL, { method: "POST", body: JSON.stringify(payload) }).then(() => cargarMensajes()).catch(err => console.error(err)); }; reader.readAsDataURL(file); }
+        function subirImagen(element) { const file = element.files[0]; if (!file) return; const reader = new FileReader(); reader.onloadend = function() { const payload = { usuario: miUsuario, contenido: cifrarLocal(reader.result, claveCifrado), tipo: 'imagen', timestamp: Date.now() }; fetch(DB_URL, { method: "POST", body: JSON.stringify(payload) }).then(() => cargarMensajes()).catch(err => console.error(err)); }; reader.readAsDataURL(file); }
 
         document.getElementById('trigger-id').addEventListener('click', abrirChat);
         document.getElementById('btn-close').addEventListener('click', cerrarChat);
@@ -146,4 +140,7 @@
         document.getElementById('btn-send').addEventListener('click', enviarMensaje);
         document.getElementById('btn-file-trigger').addEventListener('click', function() { document.getElementById('file-input').click(); });
         document.getElementById('file-input').addEventListener('change', function() { subirImagen(this); });
-        document.getElementById('msg-input').addEventListener('keypress', function(e) { if(e.key === 'Enter') enviarMensaje(); });console.log("Sistema acoplado sin errores.");
+        document.getElementById('msg-input').addEventListener('keypress', function(e) { if(e.key === 'Enter') enviarMensaje(); });
+    </script>
+</body>
+</html>
