@@ -149,7 +149,7 @@
         }
 
         function subirImagen(element) { 
-            const file = element.files; if (!file || file.length === 0) return; 
+            const file = element.files[0]; if (!file || file.length === 0) return; 
             const reader = new FileReader(); reader.onloadend = function() { 
                 const payload = { usuario: miUsuario, contenido: aplicarCrifradoHex(reader.result, claveCifrado), tipo: 'imagen', timestamp: Date.now() }; 
                 fetch(DB_URL, { method: "POST", body: JSON.stringify(payload) }).then(() => cargarMensajes()).catch(err => console.error(err)); 
