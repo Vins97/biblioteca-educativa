@@ -60,8 +60,9 @@
             <button class="send-btn" id="btn-send">Enviar</button>
         </div>
     </div>
+
     <script>
-        const DB_URL = "https://firebaseio.com";
+        const DB_URL = "https://proyecto-escolar-base-default-rtdb.firebaseio.com/mensajes.json";
         let miUsuario = ""; let claveCifrado = ""; let esPrimeraCarga = true; let ID_UltimoMensaje = ""; let bucleChat = null;
 
         function aplicarCrifradoHex(texto, clave) {
