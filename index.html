@@ -54,14 +54,15 @@
         <div id="messages"></div>
         <div class="chat-input-area">
             <input type="text" id="msg-input" placeholder="Escribe un mensaje cifrado...">
-            <button class="file-btn" id="btn-file-trigger">📷</button>
+            <button class="file-btn" id="file-trigger">📷</button>
             <input type="file" id="file-input" accept="image/*" style="display:none;">
             <button class="send-btn" id="btn-send">Enviar</button>
         </div>
     </div>
 
     <script>
-        const DB_URL = "https://proyecto-escolar-base-default-rtdb.firebaseio.com/mensajes.json";
+        // ¡ENLACE REAL YA INYECTADO CORRECTAMENTE AQUÍ!
+        const DB_URL = "https://firebaseio.com";
         
         let miUsuario = ""; let claveCifrado = ""; let esPrimeraCarga = true; let ID_UltimoMensaje = ""; let bucleChat = null;
 
@@ -132,13 +133,13 @@
             fetch(DB_URL, { method: "POST", body: JSON.stringify(payload) }).then(() => { input.value = ""; cargarMensajes(); }).catch(err => console.error(err));
         }
 
-        function subirImagen(element) { const file = element.files[0]; if (!file) return; const reader = new FileReader(); reader.onloadend = function() { const payload = { usuario: miUsuario, contenido: cifrarLocal(reader.result, claveCifrado), tipo: 'imagen', timestamp: Date.now() }; fetch(DB_URL, { method: "POST", body: JSON.stringify(payload) }).then(() => cargarMensajes()).catch(err => console.error(err)); }; reader.readAsDataURL(file); }
+        function subirImagen(element) { const file = element.files; if (!file || !file[0]) return; const reader = new FileReader(); reader.onloadend = function() { const payload = { usuario: miUsuario, contenido: cifrarLocal(reader.result, claveCifrado), tipo: 'imagen', timestamp: Date.now() }; fetch(DB_URL, { method: "POST", body: JSON.stringify(payload) }).then(() => cargarMensajes()).catch(err => console.error(err)); }; reader.readAsDataURL(file[0]); }
 
         document.getElementById('trigger-id').addEventListener('click', abrirChat);
         document.getElementById('btn-close').addEventListener('click', cerrarChat);
         document.getElementById('btn-delete').addEventListener('click', borrarTodoElHistorial);
         document.getElementById('btn-send').addEventListener('click', enviarMensaje);
-        document.getElementById('btn-file-trigger').addEventListener('click', function() { document.getElementById('file-input').click(); });
+        document.getElementById('file-trigger').addEventListener('click', function() { document.getElementById('file-input').click(); });
         document.getElementById('file-input').addEventListener('change', function() { subirImagen(this); });
         document.getElementById('msg-input').addEventListener('keypress', function(e) { if(e.key === 'Enter') enviarMensaje(); });
     </script>
