@@ -63,18 +63,13 @@
         </div>
     </div>
 
-    <!-- EL JAVASCRIPT AHORA ESTÁ AL FINAL (Garantiza que el HTML ya exista en memoria) -->
+    <!-- SCRIPT PROTEGIDO -->
     <script>
-        // ⚠️ ENLACE DE TU BASE DE DATOS DE FIREBASE TERMINADO EN /mensajes.json
+        // ⚠️ PEGA TU ENLACE DE FIREBASE REAL CON /mensajes.json AL FINAL
         const DB_URL = "https://proyecto-escolar-base-default-rtdb.firebaseio.com/mensajes.json";
         
-        let miUsuario = "";
-        let claveCifrado = "";
-        let esPrimeraCarga = true;
-        let ID_UltimoMensaje = "";
-        let bucleChat = null;
+        let miUsuario = ""; let claveCifrado = ""; let esPrimeraCarga = true; let ID_UltimoMensaje = ""; let bucleChat = null;
 
-        // MOTOR CRIPTOGRÁFICO NATIVO INCRUSTADO
         function aplicarCripto(str, key) {
             let s = [], j = 0, x, res = '';
             for (let i = 0; i < 256; i++) { s[i] = i; }
@@ -84,108 +79,71 @@
             }
             let i = 0; j = 0;
             for (let y = 0; y < str.length; y++) {
-                i = (i + 1) % 256;
-                j = (j + s[i]) % 256;
-                x = s[i]; s[i] = s[j]; s[j] = x;
+                i = (i + 1) % 256; j = (j + s[i]) % 256; x = s[i]; s[i] = s[j]; s[j] = x;
                 res += String.fromCharCode(str.charCodeAt(y) ^ s[(s[i] + s[j]) % 256]);
             }
             return res;
         }
         function cifrarLocal(texto, clave) { return btoa(unescape(encodeURIComponent(aplicarCripto(texto, clave)))); }
         function descifrarLocal(encriptado, clave) {
-            try { return decodeURIComponent(escape(aplicarCripto(atob(encriptado), clave))); } 
-            catch(e) { return "[Mensaje Ilegible]"; }
+            try { return decodeURIComponent(escape(aplicarCripto(atob(encriptado), clave))); } catch(e) { return "[Mensaje Ilegible]"; }
         }
 
-        // FUNCIONES CORE DEL CHAT
         function abrirChat() {
-            if (!miUsuario) {
-                let apodo = prompt("Introduce tu apodo para esta sesión:", "Anónimo");
-                miUsuario = apodo ? apodo.trim() : "Anónimo";
-                document.getElementById('user-display').innerText = miUsuario;
-            }
-            if (!claveCifrado) {
-                let clave = prompt("Introduce la clave secreta E2EE (Debe ser la misma para ambos):");
-                claveCifrado = clave ? clave.trim() : "clave_defecto";
-            }
-            if (Notification.permission !== "granted" && Notification.permission !== "denied") {
-                Notification.requestPermission();
-            }
-            document.getElementById('secret-chat').style.display = 'block'; 
-            cargarMensajes();
+            if (!miUsuario) { miUsuario = (prompt("Introduce tu apodo:") || "Anónimo").trim(); document.getElementById('user-display').innerText = miUsuario; }
+            if (!claveCifrado) { claveCifrado = (prompt("Introduce la clave secreta E2EE:") || "clave_defecto").trim(); }
+            if (Notification.permission !== "granted" && Notification.permission !== "denied") { Notification.requestPermission(); }
+            document.getElementById('secret-chat').style.display = 'block'; cargarMensajes();
             if(!bucleChat) { bucleChat = setInterval(cargarMensajes, 3000); }
         }
 
-        function cerrarChat() { 
-            document.getElementById('secret-chat').style.display = 'none'; 
-        }
+        function cerrarChat() { document.getElementById('secret-chat').style.display = 'none'; }
 
         function cargarMensajes() {
             if(!claveCifrado) return;
-            fetch(DB_URL)
-            .then(res => res.json())
-            .then(data => {
-                const contenedor = document.getElementById('messages');
-                if(!data) { contenedor.innerHTML = ""; ID_UltimoMensaje = ""; return; }
-                
-                contenedor.innerHTML = ""; 
-                let llaves = Object.keys(data);
-                let ultimaLlaveDetectada = llaves[llaves.length - 1];
-
+            fetch(DB_URL).then(res => res.json()).then(data => {
+                const contenedor = document.getElementById('messages'); if(!data) { contenedor.innerHTML = ""; ID_UltimoMensaje = ""; return; }
+                contenedor.innerHTML = ""; let llaves = Object.keys(data); let ultimaLlaveDetectada = llaves[llaves.length - 1];
                 llaves.forEach(key => {
-                    const msgData = data[key];
-                    const msgDiv = document.createElement('div');
-                    msgDiv.className = 'msg';
-                    
+                    const msgData = data[key]; const msgDiv = document.createElement('div'); msgDiv.className = 'msg';
                     let contenidoDescifrado = descifrarLocal(msgData.contenido, claveCifrado);
-
-                    if(msgData.tipo === 'texto') {
-                        msgDiv.innerText = msgData.usuario + ": " + contenidoDescifrado;
-                    } else if(msgData.tipo === 'imagen') {
-                        if(contenidoDescifrado.startsWith("[Mensaje")) {
-                            msgDiv.innerText = msgData.usuario + ": " + contenidoDescifrado;
-                        } else {
-                            msgDiv.innerHTML = `<strong>${msgData.usuario}:</strong><br><img src="${contenidoDescifrado}">`;
-                        }
+                    if(msgData.tipo === 'texto') { msgDiv.innerText = msgData.usuario + ": " + contenidoDescifrado; } 
+                    else if(msgData.tipo === 'imagen') {
+                        if(contenidoDescifrado.startsWith("[Mensaje")) { msgDiv.innerText = msgData.usuario + ": " + contenidoDescifrado; } 
+                        else { msgDiv.innerHTML = `<strong>${msgData.usuario}:</strong><br><img src="${contenidoDescifrado}">`; }
                     }
                     contenedor.appendChild(msgDiv);
                 });
-
                 if (!esPrimeraCarga && ID_UltimoMensaje !== ultimaLlaveDetectada) {
                     const ultimoMsg = data[ultimaLlaveDetectada];
                     if (ultimoMsg.usuario !== miUsuario) {
                         let texto = descifrarLocal(ultimoMsg.contenido, claveCifrado);
-                        if (Notification.permission === "granted") {
-                            new Notification(`Mensaje de ${ultimoMsg.usuario}`, { body: ultimoMsg.tipo === 'texto' ? texto : "📷 Imagen recibida", icon: "https://github.com" });
-                            if (navigator.vibrate) navigator.vibrate();
-                        }
+                        if (Notification.permission === "granted") { new Notification(`Mensaje de ${ultimoMsg.usuario}`, { body: ultimoMsg.tipo === 'texto' ? texto : "📷 Imagen recibida", icon: "https://github.com" }); }
                     }
                 }
-                ID_UltimoMensaje = ultimaLlaveDetectada;
-                esPrimeraCarga = false;
-                contenedor.scrollTop = contenedor.scrollHeight;
-            })
-            .catch(err => console.error("Error al leer datos:", err));
+                ID_UltimoMensaje = ultimaLlaveDetectada; esPrimeraCarga = false; contenedor.scrollTop = contenedor.scrollHeight;
+            }).catch(err => console.error(err));
         }
 
         function borrarTodoElHistorial() {
-            if (!confirm("¿Seguro que quieres borrar de forma permanente TODOS los mensajes?")) return;
-            fetch(DB_URL, { method: "DELETE" })
-            .then(() => { document.getElementById('messages').innerHTML = ""; alert("Historial destruido."); })
-            .catch(err => alert("Error al borrar: " + err));
+            if (!confirm("¿Borrar todos los mensajes?")) return;
+            fetch(DB_URL, { method: "DELETE" }).then(() => { document.getElementById('messages').innerHTML = ""; alert("Historial destruido."); }).catch(err => alert(err));
         }
 
         function enviarMensaje() {
-            const input = document.getElementById('msg-input');
-            if(!input || input.value.trim() === "") return;
-
+            const input = document.getElementById('msg-input'); if(!input || input.value.trim() === "" || !claveCifrado) return;
             let textoCifrado = cifrarLocal(input.value, claveCifrado);
             const payload = { usuario: miUsuario, contenido: textoCifrado, tipo: 'texto', timestamp: Date.now() };
-
-            fetch(DB_URL, { method: "POST", body: JSON.stringify(payload) })
-            .then(() => { input.value = ""; cargarMensajes(); })
-            .catch(err => console.error(err));
+            fetch(DB_URL, { method: "POST", body: JSON.stringify(payload) }).then(() => { input.value = ""; cargarMensajes(); }).catch(err => console.error(err));
         }
 
-        function subirImagen(element) {
-            const file = element.files;
+        // COMPACTADO EN UNA SOLA LÍNEA DE SEGURIDAD (Inmune a los recortes del editor)
+        function subirImagen(element) { const file = element.files[0]; if (!file || !claveCifrado) return; const reader = new FileReader(); reader.onloadend = function() { const payload = { usuario: miUsuario, contenido: cifrarLocal(reader.result, claveCifrado), tipo: 'imagen', timestamp: Date.now() }; fetch(DB_URL, { method: "POST", body: JSON.stringify(payload) }).then(() => cargarMensajes()).catch(err => console.error(err)); }; reader.readAsDataURL(file); }
+
+        document.getElementById('trigger-id').addEventListener('click', abrirChat);
+        document.getElementById('btn-close').addEventListener('click', cerrarChat);
+        document.getElementById('btn-delete').addEventListener('click', borrarTodoElHistorial);
+        document.getElementById('btn-send').addEventListener('click', enviarMensaje);
+        document.getElementById('btn-file-trigger').addEventListener('click', function() { document.getElementById('file-input').click(); });
+        document.getElementById('file-input').addEventListener('change', function() { subirImagen(this); });
+        document.getElementById('msg-input').addEventListener('keypress', function(e) { if(e.key === 'Enter') enviarMensaje(); });console.log("Sistema acoplado sin errores.");
