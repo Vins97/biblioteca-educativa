@@ -53,7 +53,7 @@
         </div>
         <div id="messages"></div>
         <div class="chat-input-area">
-           https://proyecto-escolar-base-default-rtdb.firebaseio.com/mensajes.json
+            <input type="text" id="msg-input" placeholder="Escribe un mensaje cifrado...">
             <button class="file-btn" id="btn-file-trigger">📷</button>
             <input type="file" id="file-input" accept="image/*" style="display:none;">
             <button class="send-btn" id="btn-send">Enviar</button>
@@ -61,7 +61,7 @@
     </div>
 
     <script>
-        const DB_URL = "TU_DATABASE_URL_REAL/mensajes.json";
+        const DB_URL = "https://proyecto-escolar-base-default-rtdb.firebaseio.com/mensajes.json";
         
         let miUsuario = ""; let claveCifrado = ""; let esPrimeraCarga = true; let ID_UltimoMensaje = ""; let bucleChat = null;
 
